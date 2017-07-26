@@ -55,6 +55,8 @@ const XBBCode = class {
     });
 
     const stack = new Stack(new BBCodeElement(tag => tag.getContent()));
+    let listType
+    let listIndex = -1
     tokens.forEach(token => {
       if (typeof token === 'string') return stack.top().append(token);
 
@@ -62,8 +64,23 @@ const XBBCode = class {
       const plugin = this.plugins[name];
 
       if (open) {
+        if (name === '*') {
+          listIndex++
+          return stack.top().append(new BBCodeElement(plugin, {
+            ...token,
+            listType,
+            listIndex
+          }));
+
+        }
+
         stack.push(new BBCodeElement(plugin, token));
         countOpen[name]++;
+
+        if (name === 'list') {
+          listType = stack.top().token.option
+          listIndex = -1
+        }
       }
 
       // Found a closing tag that matches an open one.
@@ -172,7 +189,7 @@ const RE_QUOTE = '"|\'|&(?:quot|#039);|';
 // (string end cannot occur when matching a full tag).
 const RE_ATTRIBUTE = '\\s+(\\w+)=(' + RE_QUOTE + ')(.*?)\\2(?=\\s|\\]|$)';
 const RE_TAG  = '\\[(\\/?)' + // Match the [ and an optional /.
-              '(\\w+)' +      // The tag name has no white space.
+              '(\\w+|\\*)' +      // The tag name has no white space.
               '(?:' +
                 '=(' + RE_QUOTE + ')(.*?)\\3(?=\\])' + // =option
                 '|(\\s+(\\w+)=(' + RE_QUOTE + ')(.*?)\\7(?=\\s|\\]|$)+)' + // attributes
